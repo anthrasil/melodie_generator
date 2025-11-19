@@ -186,7 +186,7 @@ fn get_output_dir(file_name:&str)->String {
     let home_dir=env::home_dir().expect("No home directory found").to_str().unwrap().to_string();
     let config_dir=home_dir.clone()+CONFIG_PATH;
     let output_dir=read_to_string(config_dir).expect("Output path not set correctly use path to set path");
-    output_dir+file_name+".wav"
+    output_dir+"/"+file_name+".wav"
 }
 fn create_notes(start_note:&Note,beats:&f32,variaton_chance:&f32,note_beats:&[f32])->Vec<Note> {
     let mut thread_rng=rng();
