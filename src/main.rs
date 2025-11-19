@@ -2,7 +2,7 @@ use std::{ env, f32::consts::PI, fs::{self, File, read_to_string}, i16, io::BufW
 
 use hound::WavWriter;
 use rand::{Rng, rng, rngs::ThreadRng};
-const CONFIG_PATH:&'static str=".config/mlg/config.txt";
+const CONFIG_PATH:&'static str="/.config/mlg/config.txt";
 #[derive(Clone, Copy)]
 struct Note {
     frequency:f32,
