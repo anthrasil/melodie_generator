@@ -2,7 +2,8 @@ use std::{ env, f32::consts::PI, fs::{self, File, read_to_string}, i16, io::BufW
 
 use hound::WavWriter;
 use rand::{Rng, rng, rngs::ThreadRng};
-const CONFIG_PATH:&'static str="/.config/mlg/config.txt";
+const CONFIG_PATH_UNIX:&'static str="/.config/mlg/config.txt";
+const CONFIG_PATH_WINDOWS:&'static str="\\Roaming\\mlg\\config.txt";
 #[derive(Clone, Copy)]
 struct Note {
     frequency:f32,
@@ -133,18 +134,18 @@ fn failed_command(command:&str,error_message:&str) {
     println!("{}",error_message)
 }
 fn help(command:&str) {
-    let mut _help_prompt="";
+    let help_prompt;
     if command=="create" {
         let help_prompt_create="create [beats] [start note: [note name note height] ex. A4] [variation chance] [note beats] [beats per minute] [file name]";
-        _help_prompt=help_prompt_create;
+        help_prompt=help_prompt_create;
     }else if command=="path" {
         let help_prompt_path="path [absolute path]";
-        _help_prompt=help_prompt_path;
+        help_prompt=help_prompt_path;
     }else {
         let help_prompt_default="Commands:\ncreate: creates a melodie\npath: sets the output path\nhelp: gives information about commands";
-        _help_prompt=help_prompt_default;
+        help_prompt=help_prompt_default;
     }
-    println!("{}",_help_prompt);
+    println!("{}",help_prompt);
 }
 fn command_help(env_args:&Vec<String>) {
     if let Some(command) = env_args.get(1) {
@@ -160,12 +161,26 @@ fn command_path(env_args:&Vec<String>) {
             return failed_command(&command, "Path has to be absolute");
         }
         let home_dir=env::home_dir().expect("No home directory found").to_str().unwrap().to_string();
-        let config_path_string=home_dir+CONFIG_PATH;
+        let mut add_back="";
+        let config_path_string;
+        if env::consts::OS=="linux" {
+            config_path_string=home_dir+CONFIG_PATH_UNIX;
+            if new_output_path.chars().last().unwrap()!='/' {
+                add_back="/";
+            }
+        } else if env::consts::OS=="windows" {
+            config_path_string=home_dir+CONFIG_PATH_WINDOWS;
+            if new_output_path.chars().last().unwrap()!='\\' {
+                add_back="\\"
+            }
+        } else {
+            return println!("Operating system not supported");
+        }
         let config_path=Path::new(&config_path_string);
         if !config_path.exists() {
             init_config(config_path);
         }
-        fs::write(config_path, new_output_path).unwrap();
+        fs::write(config_path, format!("{}{}",new_output_path,add_back)).unwrap();
     }else {
         failed_command(&command, "No path specificied");
     }
@@ -214,9 +229,17 @@ fn create_tones(notes:&[Note],bpm:&f32,file_name:&str) {
 }
 fn get_output_dir(file_name:&str)->String {
     let home_dir=env::home_dir().expect("No home directory found").to_str().unwrap().to_string();
-    let config_dir=home_dir.clone()+CONFIG_PATH;
+    let config_dir;
+    if env::consts::OS=="linux" {
+        config_dir=home_dir+CONFIG_PATH_UNIX;
+    } else if env::consts::OS=="windos" {
+        config_dir=home_dir+CONFIG_PATH_WINDOWS;
+    }else {
+        panic!("Operating system not supported");
+    }
+    
     let output_dir=read_to_string(config_dir).expect("Output path not set correctly use path to set path");
-    output_dir+"/"+file_name+".wav"
+    output_dir+file_name+".wav"
 }
 fn create_notes(start_note:&Note,beats:&f32,variaton_chance:&f32,note_beats:&[f32])->Vec<Note> {
     let mut thread_rng=rng();
@@ -236,16 +259,16 @@ fn create_next_note(frequencies_base:&[f32],frequencies_variation:&[f32],variato
     let note_beats_length=note_beats.len();
     let beat_index=thread_rng.random_range(0..note_beats_length);
     let beats=note_beats[beat_index];
-    let mut _frequency=0.0;
+    let frequency;
     if thread_rng.random_bool(*variaton_chance as f64) {
         let frequencies_base_length=frequencies_base.len();
         let frequency_index=thread_rng.random_range(0..frequencies_base_length);
-        _frequency=frequencies_base[frequency_index];
+        frequency=frequencies_base[frequency_index];
     } else {
         let frequencies_variation_length=frequencies_variation.len();
         let frequency_index=thread_rng.random_range(0..frequencies_variation_length);
-        _frequency=frequencies_variation[frequency_index];
+        frequency=frequencies_variation[frequency_index];
     }
-    let new_note=Note::new(&_frequency, &beats);
+    let new_note=Note::new(&frequency, &beats);
     new_note
 }
