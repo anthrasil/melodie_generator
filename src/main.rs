@@ -72,10 +72,12 @@ impl Note {
     }
 }
 fn command_create(env_args:&Vec<String>) {
+    let command=env_args.get(0).unwrap();
+    let default_error_message=". argument missing or not valid";
     let beats=if let Some(beats)=env_args.get(1) {
         beats.parse::<f32>().expect("1. argument for the number of beats in the song should be numeric")
     } else {
-        panic!("1. argument missing");
+        return failed_command(&command, &format!("1{}",default_error_message));
     };
 
     let mut arg_note_chars=env_args[2].chars();
@@ -88,48 +90,74 @@ fn command_create(env_args:&Vec<String>) {
             'E' => &Note::E0,
             'F' => &Note::F0,
             'G' => &Note::G0,
-            _ => panic!("2. argument note name not valid"),
+            _ => return failed_command(&command,"2. argument note name not valid"),
         }
     } else {
-        panic!("2. argument note name  missing");
+        return failed_command(&command, &format!("2{}",default_error_message));
     };
     let note_height=if let Some(note_height) = arg_note_chars.nth(0)  {
         note_height.to_digit(10).expect("2. argument note height  should be a positive integer")
     } else {
-        panic!("2. argument note height missing");
+        return failed_command(&command, &format!("2{}",default_error_message))
     };
     let start_note=Note::new_with_height(frequency, &note_height, &0.0);
 
     let variaton_chance=if let Some(variation_chance) =env_args.get(3) {
         variation_chance.parse::<f32>().expect("3. argument for the variation chance should be numeric")
     }else {
-        panic!("3. argument missing");
+        return failed_command(&command, &format!("3{}",default_error_message))
     };
 
     let note_beats:Vec<f32>=if let Some(note_beats) = env_args.get(4) {
         note_beats.split(",").map(|x| x.parse::<f32>().expect("4. argument for the beats of the notes should be a numeric array without []")).collect()
     } else {
-        panic!("4. argument missing");
+        return failed_command(&command, &format!("4{}",default_error_message))
     };
 
     let bpm=if let Some(bpm) = env_args.get(5) {
         bpm.parse::<f32>().expect("5. argument for the beats per minute should be numeric")
     } else {
-        panic!("5. argument missing");
+        return failed_command(&command, &format!("5{}",default_error_message))
     };
 
     let file_name=if let Some(file_name) = env_args.get(6) {
         file_name
     } else {
-        panic!("6. argument missing");
+        return failed_command(&command, &format!("6{}",default_error_message))
     };
 
     create_song(&beats, &start_note, &variaton_chance, &note_beats, &bpm, file_name);
 }
+fn failed_command(command:&str,error_message:&str) {
+    help(command);
+    println!("{}",error_message)
+}
+fn help(command:&str) {
+    let mut _help_prompt="";
+    if command=="create" {
+        let help_prompt_create="create [beats] [start note: [note name note height] ex. A4] [variation chance] [note beats] [beats per minute] [file name]";
+        _help_prompt=help_prompt_create;
+    }else if command=="path" {
+        let help_prompt_path="path [absolute path]";
+        _help_prompt=help_prompt_path;
+    }else {
+        let help_prompt_default="Commands:\ncreate: creates a melodie\npath: sets the output path\nhelp: gives information about commands";
+        _help_prompt=help_prompt_default;
+    }
+    println!("{}",_help_prompt);
+}
+fn command_help(env_args:&Vec<String>) {
+    if let Some(command) = env_args.get(1) {
+        help(&command);
+    }else {
+        help("");
+    }
+}
 fn command_path(env_args:&Vec<String>) {
+    let command=env_args.get(0).unwrap();
     if let Some(new_output_path)=env_args.get(1) {
         if !Path::new(new_output_path).is_absolute() {
-            panic!("Path has to be absolute");
+            return failed_command(&command, "Path has to be absolute");
         }
         let home_dir=env::home_dir().expect("No home directory found").to_str().unwrap().to_string();
         let config_path_string=home_dir+CONFIG_PATH;
@@ -139,7 +167,7 @@ fn command_path(env_args:&Vec<String>) {
         }
         fs::write(config_path, new_output_path).unwrap();
     }else {
-        panic!("No path specificied");
+        failed_command(&command, "No path specificied");
     }
 }
 fn init_config(config_path:&Path) {
@@ -153,6 +181,8 @@ fn main() {
             command_create(&env_args);
         }else if env_arg_zero=="path" {
             command_path(&env_args);
+        } else if env_arg_zero=="help" {
+            command_help(&env_args);
         }
     }
 }
